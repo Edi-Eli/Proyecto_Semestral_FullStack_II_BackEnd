@@ -1,5 +1,6 @@
 package com.ferreteria.maestros.common;
 
+import com.ferreteria.maestros.common.exception.RecursoDuplicadoException;
 import com.ferreteria.maestros.common.exception.RecursoNoEncontradoException;
 import com.ferreteria.maestros.common.exception.ReglaNegocioException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,9 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,6 +43,14 @@ public class GlobalExceptionHandler {
         log.warn("Regla de negocio en {}: {}", request.getRequestURI(), ex.getMessage());
         // Spring Framework 7 renombró UNPROCESSABLE_ENTITY -> UNPROCESSABLE_CONTENT (RFC 9110).
         return construir(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), request);
+    }
+
+    /** 409 — recurso ya existente (p. ej. correo o RUN duplicados). */
+    @ExceptionHandler(RecursoDuplicadoException.class)
+    public ResponseEntity<ApiError> manejarDuplicado(RecursoDuplicadoException ex,
+                                                     HttpServletRequest request) {
+        log.warn("Recurso duplicado en {}: {}", request.getRequestURI(), ex.getMessage());
+        return construir(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
     /** 400 — errores de Bean Validation sobre un {@code @RequestBody}. */
@@ -94,6 +108,30 @@ public class GlobalExceptionHandler {
                 request);
     }
 
+    /** 401 — credenciales incorrectas en el login. */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiError> manejarCredenciales(BadCredentialsException ex,
+                                                       HttpServletRequest request) {
+        log.warn("Credenciales inválidas en {}: {}", request.getRequestURI(), ex.getMessage());
+        return construir(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    /** 403 — la cuenta existe pero está desactivada. */
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiError> manejarCuentaDesactivada(DisabledException ex,
+                                                            HttpServletRequest request) {
+        log.warn("Cuenta desactivada en {}: {}", request.getRequestURI(), ex.getMessage());
+        return construir(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+    /** 401 — cualquier otro problema de autenticación no controlado explícitamente. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> manejarAutenticacion(AuthenticationException ex,
+                                                        HttpServletRequest request) {
+        log.warn("Error de autenticación en {}: {}", request.getRequestURI(), ex.getMessage());
+        return construir(HttpStatus.UNAUTHORIZED, "No autenticado: inicie sesión o su sesión ha expirado.", request);
+    }
+
     /** 403 — usuario autenticado pero sin el rol/permiso requerido. */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> manejarAccesoDenegado(AccessDeniedException ex,
@@ -102,12 +140,33 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta acción.", request);
     }
 
-    /** 500 — cualquier error no controlado (se registra con stacktrace). */
+    /**
+     * Último recurso: cualquier error no controlado explícitamente.
+     *
+     * <p>Si la excepción implementa {@link ErrorResponse} —la mayoría de las excepciones de
+     * Spring MVC (ruta inexistente, metodo no permitido, tipo de contenido no soportado, etc.)—
+     * se respeta su código <b>4xx</b> en lugar de devolver siempre un 500.</p>
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> manejarGenerico(Exception ex, HttpServletRequest request) {
+        if (ex instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
+            int codigo = errorResponse.getStatusCode().value();
+            log.warn("Solicitud rechazada en {} ({}): {}", request.getRequestURI(), codigo, ex.getMessage());
+            return construir(HttpStatus.valueOf(codigo), mensajeParaEstado(codigo), request);
+        }
         log.error("Error inesperado en {}", request.getRequestURI(), ex);
         return construir(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Ocurrió un error interno. Intente nuevamente más tarde.", request);
+    }
+
+    private String mensajeParaEstado(int codigo) {
+        return switch (codigo) {
+            case 404 -> "El recurso solicitado no existe.";
+            case 405 -> "El método HTTP no está permitido para esta ruta.";
+            case 406 -> "El formato de respuesta solicitado no está disponible.";
+            case 415 -> "El tipo de contenido enviado no está soportado.";
+            default -> "La solicitud no pudo ser procesada.";
+        };
     }
 
     private ResponseEntity<ApiError> construir(HttpStatus estado, String mensaje, HttpServletRequest request) {
