@@ -31,6 +31,12 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # No usamos el "usuario en memoria" por defecto de Spring Security
+  # (la autenticación es JWT propia), así que se excluye esa autoconfiguración.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+
 # ---------------------------------------------------------------------
 # Configuración propia de la aplicación
 # ---------------------------------------------------------------------
