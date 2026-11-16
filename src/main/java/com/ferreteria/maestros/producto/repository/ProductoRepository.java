@@ -12,4 +12,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long>, JpaSp
     boolean existsByCodigoIgnoreCase(String codigo);
 
     boolean existsBySubcategoriaId(Long subcategoriaId);
+
+    Optional<Producto> findTopByActivoTrueOrderByStockDesc();
+
+    Optional<Producto> findTopByActivoTrueOrderByStockAsc();
 }
