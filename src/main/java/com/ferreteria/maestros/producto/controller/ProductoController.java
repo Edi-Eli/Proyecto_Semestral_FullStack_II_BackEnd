@@ -23,6 +23,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -91,6 +92,7 @@ public class ProductoController {
     }
 
     @GetMapping("/criticos")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'VENDEDOR')")
     @Operation(summary = "Listar productos críticos",
             description = "Administrador/Vendedor. Productos con stock <= stock mínimo.")
     @ApiResponse(responseCode = "200", description = "Lista de productos críticos.")
