@@ -20,8 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/reportes")
-@PreAuthorize("@autorizacion.esAdmin()")
-@Tag(name = "Reportes", description = "Métricas del negocio (solo Administrador).")
+@Tag(name = "Reportes", description = "Métricas del negocio (resumen y top-clientes: Administrador; más-vendidos y stock: Administrador/Vendedor).")
 public class ReporteController {
 
     private final ReporteService reporteService;
@@ -31,6 +30,7 @@ public class ReporteController {
     }
 
     @GetMapping("/resumen")
+    @PreAuthorize("@autorizacion.esAdmin()")
     @Operation(summary = "Resumen general",
             description = "Recaudado, total de pedidos, pedidos por estado, total de productos y usuarios.")
     @ApiResponse(responseCode = "200", description = "Resumen del negocio.")
@@ -39,6 +39,7 @@ public class ReporteController {
     }
 
     @GetMapping("/mas-vendidos")
+    @PreAuthorize("@autorizacion.esAdminOVendedor()")
     @Operation(summary = "Productos más vendidos",
             description = "Top de productos por unidades vendidas. Filtros opcionales ?desde=&hasta= (ISO date-time).")
     @ApiResponse(responseCode = "200", description = "Lista de productos más vendidos.")
@@ -52,6 +53,7 @@ public class ReporteController {
     }
 
     @GetMapping("/top-clientes")
+    @PreAuthorize("@autorizacion.esAdmin()")
     @Operation(summary = "Top clientes", description = "Clientes con mayor monto comprado.")
     @ApiResponse(responseCode = "200", description = "Lista de clientes.")
     public List<TopClienteDTO> topClientes(@RequestParam(defaultValue = "10") int limite) {
@@ -59,6 +61,7 @@ public class ReporteController {
     }
 
     @GetMapping("/stock")
+    @PreAuthorize("@autorizacion.esAdminOVendedor()")
     @Operation(summary = "Reporte de stock",
             description = "Producto con mayor stock, con menor stock y lista de productos críticos.")
     @ApiResponse(responseCode = "200", description = "Reporte de stock.")

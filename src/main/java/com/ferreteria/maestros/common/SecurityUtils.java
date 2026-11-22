@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public final class SecurityUtils {
 
     private static final String ROL_ADMINISTRADOR = "administrador";
+    private static final String ROL_VENDEDOR = "vendedor";
 
     private SecurityUtils() {
     }
@@ -35,6 +36,16 @@ public final class SecurityUtils {
     public static boolean esAdmin() {
         return usuarioActual()
                 .map(usuario -> ROL_ADMINISTRADOR.equalsIgnoreCase(usuario.getRol().getNombre()))
+                .orElse(false);
+    }
+
+    /** {@code true} si el usuario autenticado es Administrador o Vendedor. */
+    public static boolean esAdminOVendedor() {
+        return usuarioActual()
+                .map(usuario -> {
+                    String rol = usuario.getRol().getNombre();
+                    return ROL_ADMINISTRADOR.equalsIgnoreCase(rol) || ROL_VENDEDOR.equalsIgnoreCase(rol);
+                })
                 .orElse(false);
     }
 

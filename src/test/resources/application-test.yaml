@@ -1,0 +1,17 @@
+# =====================================================================
+# Perfil "test" — se activa en los @SpringBootTest con @ActiveProfiles("test").
+# Objetivo: poder ejecutar `mvn test` SIN PostgreSQL (H2 en memoria, modo PostgreSQL).
+# La aplicación real sigue usando PostgreSQL (ver application.yaml).
+# =====================================================================
+spring:
+  datasource:
+    url: jdbc:h2:mem:ferreteria_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # el esquema lo genera Hibernate desde las entidades
+    show-sql: false
+  flyway:
+    enabled: false            # las migraciones son SQL de PostgreSQL

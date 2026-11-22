@@ -18,8 +18,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Configuración única de seguridad del monolito (JWT + roles, sin sesión de servidor).
  *
- * <p>Matriz de rutas: ver el comentario de {@code authorizeHttpRequests}. Los módulos
- * carrito/pedidos/cuentas quedan como {@code authenticated()} y se afinarán en las Fases 5–7.</p>
+ * <p>Matriz de rutas: ver el comentario de {@code authorizeHttpRequests}. Las reglas finas
+ * (Administrador o dueño) se aplican con {@code @PreAuthorize} en los controladores;
+ * aquí se define el mínimo por ruta.</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -79,26 +80,33 @@ public class SecurityConfig {
                         // Usuarios: el control fino (Administrador o el propio dueño) se hace con
                         // @PreAuthorize en UsuarioController; aquí solo se exige estar autenticado.
                         .requestMatchers("/api/usuarios/**").authenticated()
-                        .requestMatchers("/api/reportes/**").hasRole("ADMINISTRADOR")
+                        // Reportes: el detalle por método (@PreAuthorize) decide cuáles son solo ADMIN.
+                        .requestMatchers("/api/reportes/**").hasAnyRole("ADMINISTRADOR", "VENDEDOR")
                         .requestMatchers(HttpMethod.DELETE,
                                 "/api/productos/**", "/api/categorias/**", "/api/subcategorias/**")
                         .hasRole("ADMINISTRADOR")
 
                         // --- Panel compartido Administrador / Vendedor ---
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/productos/**", "/api/categorias/**", "/api/subcategorias/**")
+                        // Productos: el Vendedor puede crear, editar y ajustar stock.
+                        .requestMatchers(HttpMethod.POST, "/api/productos/**")
                         .hasAnyRole("ADMINISTRADOR", "VENDEDOR")
-                        .requestMatchers(HttpMethod.PUT,
-                                "/api/productos/**", "/api/categorias/**", "/api/subcategorias/**")
+                        .requestMatchers(HttpMethod.PUT, "/api/productos/**")
                         .hasAnyRole("ADMINISTRADOR", "VENDEDOR")
-                        .requestMatchers(HttpMethod.PATCH,
-                                "/api/productos/**", "/api/categorias/**", "/api/subcategorias/**")
+                        .requestMatchers(HttpMethod.PATCH, "/api/productos/**")
                         .hasAnyRole("ADMINISTRADOR", "VENDEDOR")
+                        // Categorías y subcategorías: solo Administrador (coincide con sus @PreAuthorize).
+                        .requestMatchers(HttpMethod.POST, "/api/categorias/**", "/api/subcategorias/**")
+                        .hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/categorias/**", "/api/subcategorias/**")
+                        .hasRole("ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/categorias/**", "/api/subcategorias/**")
+                        .hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/contactos/**").hasAnyRole("ADMINISTRADOR", "VENDEDOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/contactos/**").hasAnyRole("ADMINISTRADOR", "VENDEDOR")
 
                         // --- Resto: cualquier usuario autenticado ---
-                        // (carrito, pedidos, cuentas y /api/auth/sesion | /logout; se afinan en Fases 5–7)
+                        // (carrito, pedidos, cuentas y /api/auth/sesion | /logout; el detalle
+                        //  «Administrador o dueño» lo aplican los controladores con @PreAuthorize)
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

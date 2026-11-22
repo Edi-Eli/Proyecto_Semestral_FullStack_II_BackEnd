@@ -20,6 +20,10 @@ public class AutorizacionService {
         return SecurityUtils.esAdmin();
     }
 
+    public boolean esAdminOVendedor() {
+        return SecurityUtils.esAdminOVendedor();
+    }
+
     public boolean esAdminODuenio(String run) {
         return SecurityUtils.esAdminODuenio(run);
     }

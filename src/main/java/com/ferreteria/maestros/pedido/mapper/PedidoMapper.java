@@ -27,6 +27,8 @@ public interface PedidoMapper {
     @Mapping(target = "estado", expression = "java(pedido.getEstado().name())")
     @Mapping(target = "tipoEntrega", expression = "java(pedido.getTipoEntrega().name())")
     @Mapping(target = "metodoPago", expression = "java(pedido.getMetodoPago().name())")
+    @Mapping(target = "cliente", expression = "java(clienteDe(pedido))")
+    @Mapping(target = "direccion", expression = "java(direccionDe(pedido))")
     PedidoResumenDTO aResumen(Pedido pedido);
 
     List<PedidoResumenDTO> aResumenes(List<Pedido> pedidos);
